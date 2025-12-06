@@ -1,0 +1,318 @@
+<!-- todo_app/templates/todo_app/recycle_bin.html -->
+{% extends "todo_app/base_with_sidebar.html" %}
+{% load static %}
+
+{% block title %}Recycle Bin{% endblock %}
+
+{% block extra_css %}
+<style>
+.recycle-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-xl);
+}
+
+.empty-bin-btn {
+    padding: 10px 20px;
+    background: #fee2e2;
+    color: #991b1b;
+    border: 2px solid #fecaca;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.empty-bin-btn:hover {
+    background: #fecaca;
+    border-color: #ef4444;
+}
+
+.empty-bin-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.recycle-section {
+    margin-bottom: var(--spacing-2xl);
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin-bottom: var(--spacing-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.deleted-item-card {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-left: 4px solid #ef4444;
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-md);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    opacity: 0.85;
+    transition: all 0.2s;
+}
+
+.deleted-item-card:hover {
+    opacity: 1;
+    box-shadow: var(--shadow-md);
+}
+
+.deleted-icon {
+    width: 40px;
+    height: 40px;
+    background: #fee2e2;
+    color: #ef4444;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.deleted-content {
+    flex: 1;
+}
+
+.deleted-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin-bottom: var(--spacing-xs);
+}
+
+.deleted-meta {
+    font-size: 12px;
+    color: var(--gray-500);
+}
+
+.deleted-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.restore-btn {
+    padding: 8px 16px;
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #10b981;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.restore-btn:hover {
+    background: #10b981;
+    color: white;
+}
+
+.permanent-delete-btn {
+    padding: 8px 16px;
+    background: white;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+    border-radius: var(--radius-md);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.permanent-delete-btn:hover {
+    background: #fee2e2;
+    border-color: #ef4444;
+}
+
+.info-banner {
+    background: #dbeafe;
+    border-left: 4px solid #3b82f6;
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-xl);
+    display: flex;
+    gap: var(--spacing-md);
+}
+
+.info-banner i {
+    color: #3b82f6;
+    font-size: 20px;
+}
+
+.info-banner-content {
+    flex: 1;
+}
+
+.info-banner-title {
+    font-weight: 600;
+    color: #1e40af;
+    margin-bottom: 4px;
+}
+
+.info-banner-text {
+    font-size: 14px;
+    color: #1e40af;
+}
+</style>
+{% endblock %}
+
+{% block main_content %}
+<div class="recycle-bin-container">
+    <!-- Header -->
+    <div class="recycle-header">
+        <div>
+            <h1 class="page-title">Recycle Bin</h1>
+            <p style="color: var(--gray-600); margin-top: 5px;">
+                {{ tasks_count }} task{{ tasks_count|pluralize }} and {{ habits_count }} habit{{ habits_count|pluralize }} in recycle bin
+            </p>
+        </div>
+        {% if tasks_count > 0 or habits_count > 0 %}
+        <form method="POST" action="{% url 'empty_recycle_bin' %}" onsubmit="return confirm('Permanently delete ALL items in recycle bin? This cannot be undone!');">
+            {% csrf_token %}
+            <button type="submit" class="empty-bin-btn">
+                <i class="fa-solid fa-trash-can"></i>
+                Empty Recycle Bin
+            </button>
+        </form>
+        {% endif %}
+    </div>
+
+    <!-- Info Banner -->
+    <div class="info-banner">
+        <i class="fa-solid fa-circle-info"></i>
+        <div class="info-banner-content">
+            <div class="info-banner-title">Items stay here until permanently deleted</div>
+            <div class="info-banner-text">You can restore deleted items or permanently remove them.</div>
+        </div>
+    </div>
+
+    <!-- Deleted Tasks Section -->
+    <div class="recycle-section">
+        <h2 class="section-title">
+            <i class="fa-solid fa-list-check"></i>
+            Deleted Tasks ({{ tasks_count }})
+        </h2>
+        
+        {% if not deleted_tasks %}
+        <div class="empty-state">
+            <div class="empty-icon">
+                <i class="fa-regular fa-circle-check"></i>
+            </div>
+            <p class="empty-text">No deleted tasks</p>
+        </div>
+        {% else %}
+        {% for task in deleted_tasks %}
+        <div class="deleted-item-card">
+            <div class="deleted-icon">
+                <i class="fa-solid fa-list-check"></i>
+            </div>
+            
+            <div class="deleted-content">
+                <div class="deleted-title">{{ task.title }}</div>
+                <div class="deleted-meta">
+                    Deleted {{ task.deleted_at|timesince }} ago
+                    {% if task.due_date %}
+                    • Due: {{ task.due_date|date:"M j, Y" }}
+                    {% endif %}
+                    {% if task.priority != 3 %}
+                    • Priority: {{ task.get_priority_display }}
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="deleted-actions">
+                <form method="POST" action="{% url 'restore_task' task.id %}" style="margin: 0;">
+                    {% csrf_token %}
+                    <button type="submit" class="restore-btn">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        Restore
+                    </button>
+                </form>
+                
+                <form method="POST" action="{% url 'permanent_delete_task' task.id %}" onsubmit="return confirm('Permanently delete this task? This cannot be undone!');" style="margin: 0;">
+                    {% csrf_token %}
+                    <button type="submit" class="permanent-delete-btn">
+                        <i class="fa-solid fa-trash-can"></i>
+                        Delete Forever
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- Deleted Habits Section -->
+    <div class="recycle-section">
+        <h2 class="section-title">
+            <i class="fa-solid fa-chart-line"></i>
+            Deleted Habits ({{ habits_count }})
+        </h2>
+        
+        {% if not deleted_habits %}
+        <div class="empty-state">
+            <div class="empty-icon">
+                <i class="fa-solid fa-chart-line"></i>
+            </div>
+            <p class="empty-text">No deleted habits</p>
+        </div>
+        {% else %}
+        {% for habit in deleted_habits %}
+        <div class="deleted-item-card">
+            <div class="deleted-icon">
+                <i class="fa-solid fa-chart-line"></i>
+            </div>
+            
+            <div class="deleted-content">
+                <div class="deleted-title">{{ habit.title }}</div>
+                <div class="deleted-meta">
+                    Deleted {{ habit.deleted_at|timesince }} ago
+                    • Frequency: {{ habit.get_frequency_display }}
+                    • Streak was: {{ habit.get_streak }} days
+                </div>
+            </div>
+            
+            <div class="deleted-actions">
+                <form method="POST" action="{% url 'restore_habit' habit.id %}" style="margin: 0;">
+                    {% csrf_token %}
+                    <button type="submit" class="restore-btn">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        Restore
+                    </button>
+                </form>
+                
+                <form method="POST" action="{% url 'permanent_delete_habit' habit.id %}" onsubmit="return confirm('Permanently delete this habit? This cannot be undone!');" style="margin: 0;">
+                    {% csrf_token %}
+                    <button type="submit" class="permanent-delete-btn">
+                        <i class="fa-solid fa-trash-can"></i>
+                        Delete Forever
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
